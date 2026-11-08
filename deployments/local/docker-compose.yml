@@ -1,0 +1,14 @@
+services:
+  gateway:
+    image: adaptive-routing-gateway:local
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    command: ["-config", "/app/configs/env.yaml"]
+    volumes:
+      - ../envs/services-docker.yaml:/app/configs/routes/services.yaml:ro
+    ports:
+      - "8080:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped

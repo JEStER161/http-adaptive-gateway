@@ -1,0 +1,22 @@
+services:
+  - id: api
+    prefix: /api
+    manifest: ../../docs/manifests/api.openapi.yaml
+    hosts:
+      - id: backend-1
+        url: http://localhost:8081
+      - id: backend-2
+        url: http://localhost:8082
+      - id: backend-3
+        url: http://localhost:8083
+
+  - id: delivery
+    prefix: /delivery
+    manifest: ../../docs/manifests/delivery.openapi.yaml
+    hosts:
+      - id: delivery-1
+        url: http://localhost:8081
+      - id: delivery-2
+        url: http://localhost:8082
+      - id: delivery-3
+        url: http://localhost:8083

@@ -1,0 +1,37 @@
+openapi: 3.0.3
+info:
+  title: Backend API through Gateway
+  version: 1.0.0
+paths:
+  /v1/items:
+    post:
+      operationId: createItem
+      summary: Create an item
+      x-backend:
+        - urlPattern: /api/v1/items
+      x-plugins:
+        - name: balancer
+          inheritGlobal: true
+          inheritFromAlias: gateway-balancer
+      responses:
+        "201":
+          description: Item created
+  /v1/items/{id}:
+    get:
+      operationId: getItemByID
+      summary: Get an item by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      x-backend:
+        - urlPattern: /api/v1/items/{id}
+      x-plugins:
+        - name: balancer
+          inheritGlobal: true
+          inheritFromAlias: gateway-balancer
+      responses:
+        "200":
+          description: Item found

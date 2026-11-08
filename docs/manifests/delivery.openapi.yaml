@@ -1,0 +1,38 @@
+openapi: 3.0.3
+info:
+  title: Delivery API example
+  version: 1.0.0
+paths:
+  /v3/records:
+    get:
+      operationId: getDeliveryRecords
+      x-backend:
+        - urlPattern: /v3/records
+      x-plugins:
+        - $ref: "#/components/x-plugins/delivery-rate-limit"
+        - name: balancer
+          inheritGlobal: true
+          inheritFromAlias: gateway-balancer
+      responses:
+        "200":
+          description: Records returned
+  /v3/push/{push_type}/{push_id}:
+    post:
+      operationId: pushDelivery
+      x-backend:
+        - urlPattern: /v3/push/{push_type}/{push_id}
+      x-plugins:
+        - name: balancer
+          inheritGlobal: true
+          inheritFromAlias: gateway-balancer
+      responses:
+        "200":
+          description: Push accepted
+components:
+  x-plugins:
+    delivery-rate-limit:
+      type: rate_limit
+      params:
+        requestsPerSecond: 10
+        burst: 20
+        key: remote_ip
