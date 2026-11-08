@@ -11,6 +11,7 @@ import (
 	"gateway/internal/api/routing"
 	apierrors "gateway/pkg/api/errors"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
@@ -22,7 +23,10 @@ func NewRouter(logger *slog.Logger, config *configs.Config, routes []routing.Com
 	e.HideBanner, e.HidePort = true, true
 	e.HTTPErrorHandler = errorHandler(config.Logging.RequestIDFieldName)
 	e.Use(middleware.RecoverWithConfig(middleware.RecoverConfig{DisablePrintStack: true}))
-	e.Use(middleware.RequestIDWithConfig(middleware.RequestIDConfig{TargetHeader: config.Logging.RequestIDFieldName}))
+	e.Use(middleware.RequestIDWithConfig(middleware.RequestIDConfig{
+		TargetHeader: config.Logging.RequestIDFieldName,
+		Generator:    uuid.NewString,
+	}))
 	e.Use(requestLogging(logger, config.Logging.RequestIDFieldName))
 	e.GET("/health", func(c echo.Context) error { return c.JSON(http.StatusOK, map[string]string{"status": "ok"}) })
 	for _, compiled := range routes {

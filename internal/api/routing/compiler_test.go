@@ -24,7 +24,7 @@ func TestCompileProjectRoutes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]string{"/api/v1/items": "/api/v1/items", "/api/v1/items/:id": "/api/v1/items/{id}", "/delivery/v3/records": "/v3/records", "/delivery/v3/push/:push_type/:push_id": "/v3/push/{push_type}/{push_id}"}
+	want := map[string]string{"/api/v1/items": "/v1/items", "/api/v1/items/:id": "/v1/items/{id}", "/delivery/v3/records": "/v3/records", "/delivery/v3/push/:push_type/:push_id": "/v3/push/{push_type}/{push_id}"}
 	if len(routes) != len(want) {
 		t.Fatalf("routes = %d, want %d", len(routes), len(want))
 	}

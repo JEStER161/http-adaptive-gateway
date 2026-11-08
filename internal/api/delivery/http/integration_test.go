@@ -18,6 +18,8 @@ import (
 	"gateway/internal/api/plugin/ratelimit"
 	"gateway/internal/api/proxy"
 	"gateway/internal/api/routing"
+
+	"github.com/google/uuid"
 )
 
 type recordingObserver struct {
@@ -84,7 +86,7 @@ func TestGatewayRewritesPathAndPreservesRequest(t *testing.T) {
 	if recorder.Code != stdhttp.StatusCreated {
 		t.Fatalf("status = %d", recorder.Code)
 	}
-	if upstreamPath != "/api/v1/items" || upstreamQuery != "source=test" || upstreamBody != `{"name":"n","value":"v"}` {
+	if upstreamPath != "/v1/items" || upstreamQuery != "source=test" || upstreamBody != `{"name":"n","value":"v"}` {
 		t.Fatalf("upstream got path=%q query=%q body=%q", upstreamPath, upstreamQuery, upstreamBody)
 	}
 	if recorder.Header().Get("X-Gateway-Upstream") != "api-1" {
@@ -92,6 +94,9 @@ func TestGatewayRewritesPathAndPreservesRequest(t *testing.T) {
 	}
 	if upstreamRequestID == "" || len(recorder.Header().Values("x-request-id")) != 1 || recorder.Header().Get("x-request-id") != upstreamRequestID {
 		t.Fatalf("request id was not propagated exactly once: upstream=%q response=%v", upstreamRequestID, recorder.Header().Values("x-request-id"))
+	}
+	if _, err := uuid.Parse(upstreamRequestID); err != nil {
+		t.Fatalf("generated request id is not UUID: %q", upstreamRequestID)
 	}
 	if observed.started != 1 || observed.finished != 1 {
 		t.Fatalf("observer = %d/%d", observed.started, observed.finished)

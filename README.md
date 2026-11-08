@@ -18,7 +18,7 @@ HTTP Gateway для дипломного стенда с несколькими 
 
 ```text
 GET /delivery/v3/records -> service delivery -> /v3/records
-GET /api/v1/items       -> service api      -> /api/v1/items
+GET /api/v1/items       -> service api      -> /v1/items
 ```
 
 Параметры OpenAPI вида `{id}` регистрируются в Echo как `:id` и безопасно подставляются в `urlPattern`. Query string, HTTP-метод и body сохраняются.

@@ -8,7 +8,7 @@ paths:
       operationId: createItem
       summary: Create an item
       x-backend:
-        - urlPattern: /api/v1/items
+        - urlPattern: /v1/items
       x-plugins:
         - name: balancer
           inheritGlobal: true
@@ -27,7 +27,7 @@ paths:
           schema:
             type: string
       x-backend:
-        - urlPattern: /api/v1/items/{id}
+        - urlPattern: /v1/items/{id}
       x-plugins:
         - name: balancer
           inheritGlobal: true

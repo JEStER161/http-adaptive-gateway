@@ -122,8 +122,8 @@ func (p *Proxy) modifyResponse(response *http.Response) error {
 	state.status = response.StatusCode
 	response.Header.Set("X-Gateway-Upstream", state.instance.ID)
 	response.Header.Set(p.requestIDHeader, state.requestID)
-	if backendID := response.Header.Get("X-Instance-ID"); backendID != "" && backendID != state.instance.ID && p.logger != nil {
-		p.logger.Warn("backend instance header does not match selected instance", "service_id", state.serviceID, "selected_instance_id", state.instance.ID, "backend_instance_id", backendID)
+	if backendID := response.Header.Get("X-Instance-ID"); backendID != "" && p.logger != nil {
+		p.logger.Debug("upstream response received", "service_id", state.serviceID, "selected_instance_id", state.instance.ID, "backend_instance_id", backendID)
 	}
 	return nil
 }
