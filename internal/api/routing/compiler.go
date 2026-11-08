@@ -49,7 +49,7 @@ func Compile(config *configs.Config, balancers *balancer.Registry, plugins *plug
 	global := config.BalancerPlugin()
 	seenIDs, seenRoutes := map[string]struct{}{}, map[string]struct{}{}
 	var result []CompiledRoute
-	for _, definition := range config.Services {
+	for _, definition := range config.Routes {
 		service, err := toDomainService(definition)
 		if err != nil {
 			return nil, err
@@ -68,7 +68,7 @@ func Compile(config *configs.Config, balancers *balancer.Registry, plugins *plug
 				return nil, fmt.Errorf("duplicate operationId %q", route.ID)
 			}
 			seenIDs[route.ID] = struct{}{}
-			external := joinPrefix(definition.Prefix, route.Path)
+			external := joinPrefix(definition.Endpoint, route.Path)
 			echoPath := openAPIToEcho(external)
 			key := route.Method + " " + echoPath
 			if _, exists := seenRoutes[key]; exists {
@@ -91,16 +91,21 @@ func Compile(config *configs.Config, balancers *balancer.Registry, plugins *plug
 	return result, nil
 }
 
-func toDomainService(definition configs.Service) (*domain.Service, error) {
-	service := &domain.Service{ID: definition.ID, Prefix: definition.Prefix}
-	for _, host := range definition.Hosts {
-		parsed, err := url.Parse(host.URL)
+func toDomainService(definition configs.Route) (*domain.Service, error) {
+	service := &domain.Service{ID: definition.Name, Prefix: definition.Endpoint}
+	for index, host := range definition.Backend.Hosts {
+		parsed, err := url.Parse(host)
 		if err != nil {
-			return nil, fmt.Errorf("parse host %q: %w", host.ID, err)
+			return nil, fmt.Errorf("parse host %q: %w", host, err)
 		}
-		service.Instances = append(service.Instances, domain.Instance{ID: host.ID, URL: parsed})
+		service.Instances = append(service.Instances, domain.Instance{ID: instanceID(definition.Endpoint, index), URL: parsed})
 	}
 	return service, nil
+}
+
+func instanceID(endpoint string, index int) string {
+	name := strings.ReplaceAll(strings.Trim(endpoint, "/"), "/", "-")
+	return fmt.Sprintf("%s-%d", name, index+1)
 }
 
 func buildPlugins(uses []pluginUse, definitions map[string]localPlugin, cache map[string]echo.MiddlewareFunc, registry *plugin.Registry, serviceBalancer balancer.Balancer, globalAlias, requestIDHeader string) ([]echo.MiddlewareFunc, []string, error) {

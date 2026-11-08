@@ -60,9 +60,9 @@ func TestGatewayRewritesPathAndPreservesRequest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for serviceIndex := range cfg.Services {
-		for hostIndex := range cfg.Services[serviceIndex].Hosts {
-			cfg.Services[serviceIndex].Hosts[hostIndex].URL = "http://upstream.test"
+	for routeIndex := range cfg.Routes {
+		for hostIndex := range cfg.Routes[routeIndex].Backend.Hosts {
+			cfg.Routes[routeIndex].Backend.Hosts[hostIndex] = "http://upstream.test"
 		}
 	}
 	pluginRegistry := plugin.NewRegistry()
@@ -87,7 +87,7 @@ func TestGatewayRewritesPathAndPreservesRequest(t *testing.T) {
 	if upstreamPath != "/api/v1/items" || upstreamQuery != "source=test" || upstreamBody != `{"name":"n","value":"v"}` {
 		t.Fatalf("upstream got path=%q query=%q body=%q", upstreamPath, upstreamQuery, upstreamBody)
 	}
-	if recorder.Header().Get("X-Gateway-Upstream") != "backend-1" {
+	if recorder.Header().Get("X-Gateway-Upstream") != "api-1" {
 		t.Fatalf("upstream header = %q", recorder.Header().Get("X-Gateway-Upstream"))
 	}
 	if upstreamRequestID == "" || len(recorder.Header().Values("x-request-id")) != 1 || recorder.Header().Get("x-request-id") != upstreamRequestID {
@@ -133,9 +133,9 @@ func TestRateLimitStopsBeforeUpstream(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for serviceIndex := range cfg.Services {
-		for hostIndex := range cfg.Services[serviceIndex].Hosts {
-			cfg.Services[serviceIndex].Hosts[hostIndex].URL = "http://upstream.test"
+	for routeIndex := range cfg.Routes {
+		for hostIndex := range cfg.Routes[routeIndex].Backend.Hosts {
+			cfg.Routes[routeIndex].Backend.Hosts[hostIndex] = "http://upstream.test"
 		}
 	}
 	pluginRegistry := plugin.NewRegistry()
@@ -170,9 +170,9 @@ func TestUpstreamTimeoutUsesGatewayError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for serviceIndex := range cfg.Services {
-		for hostIndex := range cfg.Services[serviceIndex].Hosts {
-			cfg.Services[serviceIndex].Hosts[hostIndex].URL = "http://upstream.test"
+	for routeIndex := range cfg.Routes {
+		for hostIndex := range cfg.Routes[routeIndex].Backend.Hosts {
+			cfg.Routes[routeIndex].Backend.Hosts[hostIndex] = "http://upstream.test"
 		}
 	}
 	pluginRegistry := plugin.NewRegistry()
@@ -200,9 +200,9 @@ func TestClientCancellationFinishesObservation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for serviceIndex := range cfg.Services {
-		for hostIndex := range cfg.Services[serviceIndex].Hosts {
-			cfg.Services[serviceIndex].Hosts[hostIndex].URL = "http://upstream.test"
+	for routeIndex := range cfg.Routes {
+		for hostIndex := range cfg.Routes[routeIndex].Backend.Hosts {
+			cfg.Routes[routeIndex].Backend.Hosts[hostIndex] = "http://upstream.test"
 		}
 	}
 	pluginRegistry := plugin.NewRegistry()

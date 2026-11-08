@@ -65,7 +65,19 @@ func (p *Proxy) CloseIdleConnections() {
 }
 
 func New(config configs.Proxy, requestIDHeader string, upstreamObserver observer.Observer, logger *slog.Logger) *Proxy {
-	transport := &http.Transport{Proxy: nil, DialContext: (&net.Dialer{Timeout: config.DialTimeout.Duration, KeepAlive: 30 * time.Second}).DialContext, ResponseHeaderTimeout: config.ResponseHeaderTimeout.Duration, IdleConnTimeout: config.IdleConnTimeout.Duration, MaxIdleConns: config.MaxIdleConns, MaxIdleConnsPerHost: config.MaxIdleConnsPerHost, ForceAttemptHTTP2: true}
+	transport := &http.Transport{
+		Proxy: nil,
+		DialContext: (&net.Dialer{
+			Timeout:   config.DialTimeout.Duration,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		ResponseHeaderTimeout: config.ResponseHeaderTimeout.Duration,
+		IdleConnTimeout:       config.IdleConnTimeout.Duration,
+		MaxIdleConns:          config.MaxIdleConns,
+		MaxIdleConnsPerHost:   config.MaxIdleConnsPerHost,
+		ForceAttemptHTTP2:     true,
+	}
+
 	return NewWithTransport(requestIDHeader, upstreamObserver, transport, logger)
 }
 

@@ -35,7 +35,7 @@ type Config struct {
 	Listen      Listen      `yaml:"listen"`
 	Proxy       Proxy       `yaml:"proxy"`
 	Application Application `yaml:"application"`
-	Services    []Service   `yaml:"-"`
+	Routes      []Route     `yaml:"-"`
 }
 
 type Logging struct {
@@ -121,21 +121,29 @@ type AdaptiveMetric struct {
 	Params yaml.Node `yaml:"params"`
 }
 
-type Service struct {
-	ID           string `yaml:"id"`
-	Prefix       string `yaml:"prefix"`
-	Manifest     string `yaml:"manifest"`
-	ManifestPath string `yaml:"-"`
-	Hosts        []Host `yaml:"hosts"`
+type Route struct {
+	Name                string  `yaml:"name"`
+	Comment             string  `yaml:"comment"`
+	Type                string  `yaml:"type"`
+	Endpoint            string  `yaml:"endpoint"`
+	Manifest            string  `yaml:"manifest"`
+	IsValidationEnabled bool    `yaml:"is_validation_enabled"`
+	Backend             Backend `yaml:"backend"`
+	ManifestPath        string  `yaml:"-"`
 }
 
-type Host struct {
-	ID  string `yaml:"id"`
-	URL string `yaml:"url"`
+type Backend struct {
+	Hosts []string `yaml:"hosts"`
+	SSL   SSL      `yaml:"ssl"`
 }
 
-type serviceFile struct {
-	Services []Service `yaml:"services"`
+type SSL struct {
+	IsEnabled bool `yaml:"isEnabled"`
+}
+
+type routeFile struct {
+	Routes     []Route             `yaml:"routes"`
+	HostGroups map[string][]string `yaml:",inline"`
 }
 
 func Load(path string) (Config, error) {
@@ -152,20 +160,32 @@ func Load(path string) (Config, error) {
 		return Config{}, fmt.Errorf("resolve main config directory: %w", err)
 	}
 	for _, relative := range cfg.Application.RouteConfigPaths {
-		servicePath := resolvePath(base, relative)
-		var file serviceFile
-		if err := decodeStrictFile(servicePath, &file); err != nil {
+		routePath := resolvePath(base, relative)
+		var file routeFile
+		if err := decodeStrictFile(routePath, &file); err != nil {
 			return Config{}, fmt.Errorf("load route config %q: %w", relative, err)
 		}
-		for i := range file.Services {
-			file.Services[i].ManifestPath = resolvePath(filepath.Dir(servicePath), file.Services[i].Manifest)
+		if err := validateHostGroupNames(file.HostGroups); err != nil {
+			return Config{}, fmt.Errorf("validate route config %q: %w", relative, err)
 		}
-		cfg.Services = append(cfg.Services, file.Services...)
+		for i := range file.Routes {
+			file.Routes[i].ManifestPath = resolvePath(filepath.Dir(routePath), file.Routes[i].Manifest)
+		}
+		cfg.Routes = append(cfg.Routes, file.Routes...)
 	}
-	if err := cfg.validateServices(); err != nil {
-		return Config{}, fmt.Errorf("validate services: %w", err)
+	if err := cfg.validateRoutes(); err != nil {
+		return Config{}, fmt.Errorf("validate routes: %w", err)
 	}
 	return cfg, nil
+}
+
+func validateHostGroupNames(groups map[string][]string) error {
+	for name := range groups {
+		if !strings.HasSuffix(name, "-hosts") {
+			return fmt.Errorf("unknown field %q: host group names must end with -hosts", name)
+		}
+	}
+	return nil
 }
 
 func decodeStrictFile(path string, target any) error {
@@ -377,43 +397,52 @@ func decodeStrictNode(node *yaml.Node, target any) error {
 	return decoder.Decode(target)
 }
 
-func (c Config) validateServices() error {
-	if len(c.Services) == 0 {
-		return errors.New("at least one service is required")
+func (c Config) validateRoutes() error {
+	if len(c.Routes) == 0 {
+		return errors.New("at least one route is required")
 	}
-	ids, prefixes := map[string]struct{}{}, map[string]struct{}{}
+	names, endpoints := map[string]struct{}{}, map[string]struct{}{}
 	var problems []string
-	for _, service := range c.Services {
-		if strings.TrimSpace(service.ID) == "" {
-			problems = append(problems, "service id is required")
+	for _, route := range c.Routes {
+		if strings.TrimSpace(route.Name) == "" {
+			problems = append(problems, "route name is required")
 		}
-		if _, exists := ids[service.ID]; exists {
-			problems = append(problems, "duplicate service id "+service.ID)
+		if _, exists := names[route.Name]; exists {
+			problems = append(problems, "duplicate route name "+route.Name)
 		}
-		ids[service.ID] = struct{}{}
-		if !strings.HasPrefix(service.Prefix, "/") || service.Prefix == "/" || strings.HasSuffix(service.Prefix, "/") {
-			problems = append(problems, "service "+service.ID+" prefix must start with / and have no trailing /")
+		names[route.Name] = struct{}{}
+		if route.Type != "openapi" {
+			problems = append(problems, "route "+route.Name+" type must be openapi")
 		}
-		if _, exists := prefixes[service.Prefix]; exists {
-			problems = append(problems, "duplicate service prefix "+service.Prefix)
+		if route.IsValidationEnabled {
+			problems = append(problems, "route "+route.Name+" is_validation_enabled must be false: OpenAPI runtime validation is not implemented")
 		}
-		prefixes[service.Prefix] = struct{}{}
-		if len(service.Hosts) == 0 {
-			problems = append(problems, "service "+service.ID+" requires hosts")
+		if !strings.HasPrefix(route.Endpoint, "/") || route.Endpoint == "/" || strings.HasSuffix(route.Endpoint, "/") {
+			problems = append(problems, "route "+route.Name+" endpoint must start with / and have no trailing /")
 		}
-		hostIDs := map[string]struct{}{}
-		for _, host := range service.Hosts {
-			if _, exists := hostIDs[host.ID]; exists {
-				problems = append(problems, "duplicate host id "+host.ID+" in service "+service.ID)
+		if _, exists := endpoints[route.Endpoint]; exists {
+			problems = append(problems, "duplicate route endpoint "+route.Endpoint)
+		}
+		endpoints[route.Endpoint] = struct{}{}
+		if len(route.Backend.Hosts) == 0 {
+			problems = append(problems, "route "+route.Name+" backend requires hosts")
+		}
+		if route.Backend.SSL.IsEnabled {
+			problems = append(problems, "route "+route.Name+" backend.ssl.isEnabled must be false: custom backend TLS settings are not implemented")
+		}
+		hostURLs := map[string]struct{}{}
+		for _, host := range route.Backend.Hosts {
+			if _, exists := hostURLs[host]; exists {
+				problems = append(problems, "duplicate backend host "+host+" in route "+route.Name)
 			}
-			hostIDs[host.ID] = struct{}{}
-			parsed, err := url.Parse(host.URL)
+			hostURLs[host] = struct{}{}
+			parsed, err := url.Parse(host)
 			if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" || (parsed.Path != "" && parsed.Path != "/") || parsed.RawQuery != "" || parsed.Fragment != "" || parsed.User != nil {
-				problems = append(problems, "invalid URL for host "+host.ID)
+				problems = append(problems, "invalid backend host URL "+host+" in route "+route.Name)
 			}
 		}
-		if _, err := os.Stat(service.ManifestPath); err != nil {
-			problems = append(problems, "manifest for service "+service.ID+": "+err.Error())
+		if _, err := os.Stat(route.ManifestPath); err != nil {
+			problems = append(problems, "manifest for route "+route.Name+": "+err.Error())
 		}
 	}
 	if len(problems) > 0 {

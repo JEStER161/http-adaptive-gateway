@@ -7,14 +7,14 @@ HTTP Gateway для дипломного стенда с несколькими 
 Конфигурация разделена на три уровня:
 
 1. [`configs/env.yaml`](configs/env.yaml) — HTTP-сервер, transport, логирование, глобальные плагины и выбранная стратегия.
-2. [`configs/routes/services.yaml`](configs/routes/services.yaml) — selector-prefix, manifest и полный список hosts каждого сервиса.
+2. [`configs/routes/services.yaml`](configs/routes/services.yaml) — routes в формате `edge-api`: `name`, selector-prefix `endpoint`, `manifest` и `backend.hosts`. Списки hosts вынесены в YAML anchors вида `backend-*-hosts`.
 3. [`docs/manifests`](docs/manifests) — OpenAPI-операции, `x-backend.urlPattern` и упорядоченные `x-plugins`.
 
 `internal/app` вручную собирает registry стратегий, plugin registry, observer, shared HTTP transport, proxy и Echo router. База данных и service discovery Gateway не требуются.
 
 ## Маршрутизация пути
 
-Внешний путь составляется как `service.prefix + OpenAPI path`, а upstream path берётся только из `x-backend[0].urlPattern`.
+Внешний путь составляется как `route.endpoint + OpenAPI path`, а upstream path берётся только из `x-backend[0].urlPattern`.
 
 ```text
 GET /delivery/v3/records -> service delivery -> /v3/records
@@ -80,7 +80,7 @@ curl -i -X POST http://localhost:8080/api/v1/items \
   -d '{"name":"example","value":"through gateway"}'
 ```
 
-В последовательных ответах `X-Gateway-Upstream` меняется между `backend-1`, `backend-2`, `backend-3`; backend также возвращает `X-Instance-ID`.
+В последовательных ответах `X-Gateway-Upstream` меняется между `api-1`, `api-2`, `api-3`. Instance ID формируется из `endpoint` и порядкового номера host.
 
 Для запуска Gateway в Docker:
 

@@ -15,11 +15,11 @@ func TestLoadProjectConfig(t *testing.T) {
 	if got, want := cfg.BalancerPlugin().Params.Strategy, "round_robin"; got != want {
 		t.Fatalf("strategy = %q, want %q", got, want)
 	}
-	if len(cfg.Services) != 2 {
-		t.Fatalf("services = %d, want 2", len(cfg.Services))
+	if len(cfg.Routes) != 2 {
+		t.Fatalf("routes = %d, want 2", len(cfg.Routes))
 	}
-	if !filepath.IsAbs(cfg.Services[0].ManifestPath) {
-		t.Fatalf("manifest path was not resolved: %q", cfg.Services[0].ManifestPath)
+	if !filepath.IsAbs(cfg.Routes[0].ManifestPath) {
+		t.Fatalf("manifest path was not resolved: %q", cfg.Routes[0].ManifestPath)
 	}
 }
 
@@ -38,13 +38,13 @@ func TestLoadRejectsUnknownMainField(t *testing.T) {
 	}
 }
 
-func TestServiceFileRejectsBalancingSettings(t *testing.T) {
+func TestRouteFileRejectsBalancingSettings(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "services.yaml")
-	data := []byte("services:\n  - id: api\n    prefix: /api\n    manifest: manifest.yaml\n    hosts: []\n    strategy: random\n")
+	data := []byte("routes:\n  - name: openapi.api\n    type: openapi\n    endpoint: /api\n    manifest: manifest.yaml\n    strategy: random\n    backend:\n      hosts: []\n      ssl:\n        isEnabled: false\n")
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	var file serviceFile
+	var file routeFile
 	err := decodeStrictFile(path, &file)
 	if err == nil || !strings.Contains(err.Error(), "field strategy not found") {
 		t.Fatalf("decodeStrictFile() error = %v, want unknown strategy field", err)
